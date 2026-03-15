@@ -1,0 +1,19 @@
+provider:
+  name: groq                    # ollama | groq | openai
+  model: llama-3.3-70b-versatile
+  api_key_env: GROQ_API_KEY     # env variable name holding the API key
+
+execution_mode: confirm          # confirm | auto
+
+mcp_servers:
+  filesystem:
+    command: npx
+    args: ["@modelcontextprotocol/server-filesystem", "./workspace"]
+  tavily:
+    command: npx
+    args: ["tavily-mcp"]
+    env:
+      TAVILY_API_KEY: ""
+  rag:
+    command: python
+    args: ["mcp_servers/rag_server/server.py"]
