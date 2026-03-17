@@ -40,6 +40,23 @@ class AgentState(TypedDict):
     implement_iteration_count: int
     execution_log: List[dict]
 
+    # RAG
+    rag_query_results: List[dict]
+    rag_fallback_used: bool
+    rag_fallback_results: List[dict]
+
+    # MCP Integration
+    available_mcp_tools: List[dict]
+    mcp_server_status: dict
+
+    # Provider Abstraction
+    active_provider: str
+    active_model: str
+    provider_switch_reason: str
+
+    # CLI Interface
+    execution_mode: str
+
     # Conversation
     messages: list
 

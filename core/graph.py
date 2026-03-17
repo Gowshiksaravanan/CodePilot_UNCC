@@ -25,7 +25,14 @@ def has_prev_context_edge(state: AgentState) -> str:
 
 
 def route_type_edge(state: AgentState) -> str:
-    """After super_router: simple -> implement, complex -> plan_node."""
+    """After super_router: check user_approved first, then fall back to route_type."""
+    # If coming back from user_plan_approval, use the approval flag
+    if state.get("user_approved") is True:
+        return "implement"
+    if state.get("user_approved") is False:
+        return "plan_node"
+
+    # Fresh task — classify by route_type
     if state["route_type"] == "simple":
         return "implement"
     return "plan_node"
@@ -92,13 +99,14 @@ def build_graph(config: dict = None):
         "user_clarification": "user_clarification",
     })
 
-    # After clarification -> back to plan_node to regenerate
-    graph.add_edge("user_clarification", "plan_node")
+    # After clarification -> comparator (updates context, then super_router
+    # routes to plan_node since route_type is set to "complex" by clarification node)
+    graph.add_edge("user_clarification", "comparator")
 
-    # User plan approval always -> query_reconstruction
-    # Approved: feedback tells super_router to go straight to implement
-    # Rejected: feedback contains user changes, triggers re-planning
-    graph.add_edge("user_plan_approval", "query_reconstruction")
+    # User plan approval -> comparator (with user_approved flag + user_feedback)
+    # Comparator updates context, then super_router checks user_approved:
+    #   approved -> implement, rejected -> plan_node
+    graph.add_edge("user_plan_approval", "comparator")
 
     # After implementation -> code judge reviews
     graph.add_edge("implement", "code_judge")
