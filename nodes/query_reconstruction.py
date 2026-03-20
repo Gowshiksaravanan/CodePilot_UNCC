@@ -1,11 +1,8 @@
 """
 Query Reconstruction Node
-Reads: messages, user_feedback
-Writes: user_query, restructured_query, session_id, time_started
 """
 
 import logging
-
 from core.state import AgentState
 from core.config import load_config
 from providers.provider import get_llm
@@ -22,6 +19,7 @@ def run(state: AgentState) -> dict:
 
     user_query = state.get("user_query", "")
     code_base = state.get("code_base", {})
+    existing_context = state.get("context")
 
     prompt = render_prompt("query_reconstruction", {
         "user_query": user_query,
@@ -35,5 +33,6 @@ def run(state: AgentState) -> dict:
 
     return {
         "restructured_query": reconstructed,
+        "has_prev_context": bool(existing_context),
         "current_node": "query_reconstruction"
     }
