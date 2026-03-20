@@ -1,7 +1,5 @@
 """
 Comparator Node
-Reads: context (previous), code_base
-Writes: context_difference, has_prev_context
 """
 
 import logging
@@ -9,39 +7,45 @@ from core.state import AgentState
 
 logger = logging.getLogger(__name__)
 
-SCORE_THRESHOLD = 0.85
-MAX_ITERATIONS = 3
-
 
 def run(state: AgentState) -> dict:
-    score = state.get("plan_score", 0.0)
-    iteration = state.get("plan_iteration_count", 0)
-    feedback = state.get("plan_feedback", "")
+    prev_context = state.get("context", {})
 
-    logger.info(f"Comparator: score={score}, iteration={iteration}")
+    current_plan = state.get("current_plan", "")
+    plan_feedback = state.get("plan_feedback", "")
+    user_feedback = state.get("user_feedback", "")
+    user_responses = state.get("user_responses", [])
+    user_approved = state.get("user_approved", None)
 
-    # Case 1: Good plan -> proceed
-    if score >= SCORE_THRESHOLD:
-        logger.info("Plan accepted.")
-        return {
-            "route_type": "simple",  # or move to implement node
-            "needs_clarification": False,
-            "current_node": "comparator"
-        }
+    # Previous info from context
+    prev_plan = prev_context.get("latest_plan", "")
+    prev_feedback = prev_context.get("plan_feedback", "")
+    prev_user_clarifications = prev_context.get("user_clarifications", [])
 
-    # Case 2: Retry planning
-    if iteration < MAX_ITERATIONS:
-        logger.info("Retrying plan generation.")
-        return {
-            "route_type": "complex",
-            "needs_clarification": False,
-            "current_node": "comparator"
-        }
+    differences = []
 
-    # Case 3: Too many failures -> ask user
-    logger.info("Max iterations reached. Asking for clarification.")
-    return {
-        "route_type": "complex",
-        "needs_clarification": True,
-        "current_node": "comparator"
+    if current_plan and current_plan != prev_plan:
+        differences.append("Execution plan has been updated.")
+
+    if plan_feedback and plan_feedback != prev_feedback:
+        differences.append(f"Plan feedback changed: {plan_feedback}")
+
+    if user_feedback:
+        differences.append(f"User feedback provided: {user_feedback}")
+
+    if user_responses and user_responses != prev_user_clarifications:
+        differences.append(f"New user clarifications: {user_responses}")
+
+    if user_approved is not None:
+        differences.append(f"User approval status: {user_approved}")
+
+    context_difference = ("\n".join(differences)
+                          if differences
+                          else "No significant changes detected.")
+
+    logger.info("Comparator detected changes:\n%s", context_difference)
+
+    return {"context_difference": context_difference,
+            "has_prev_context": True, # future iterations go through comparator
+            "current_node": "comparator",
     }
