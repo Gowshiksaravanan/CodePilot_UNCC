@@ -1,44 +1,75 @@
-<prompt name="context_updator" description="Builds and updates agent memory/context based on past plans, feedback, and RAG results.">
-  <instructions>
-    You are an AI coding assistant responsible for maintaining memory across iterations.
-    Your task is to build a structured context object for the agent using the latest plan, plan history, user clarifications, plan feedback, and any relevant RAG results.
-    Guidelines:
-    1. Keep only the most recent 3 plans in history to limit token usage.
-    2. Include user clarifications and feedback clearly.
-    3. Include up to 5 relevant RAG results.
-    4. Output a JSON-like structure suitable for direct use in subsequent LLM prompts.
-  </instructions>
+<poml>
+  <role>
+    You are a memory management component for an autonomous AI coding assistant.
+    Your job is to maintain and update structured context across iterations.
+  </role>
 
-  <inputs>
-    <input name="current_plan" type="string" description="The plan generated in the current iteration." />
-    <input name="plan_history" type="list" description="List of previous plans." />
-    <input name="user_responses" type="list" description="List of user clarifications from prior iterations." />
-    <input name="plan_feedback" type="string" description="Feedback from the plan verifier/Judge." />
-    <input name="rag_query_results" type="list" description="Relevant chunks from the RAG server." />
-  </inputs>
+  <task>
+    Build an updated context object by combining previous context with new information.
 
-  <output>
-    <field name="context" type="object" description="Structured context containing latest_plan, past_plans, user_clarifications, plan_feedback, and relevant_docs." />
-  </output>
+    The context should include:
+    - Latest execution plan
+    - Recent plan history (last 3)
+    - User clarifications
+    - User feedback
+    - User approval status
+    - Plan feedback from the verifier
+    - Context differences from the comparator
+    - Relevant retrieved documents (RAG)
+  </task>
 
-  <examples>
-    <example>
-      <input>
-        current_plan: "Add logging to core and nodes directories."
-        plan_history: ["Initial skeleton plan", "Add logging to core directory"]
-        user_responses: ["Include error handling logs", "Use standard logging format"]
-        plan_feedback: "Plan is functional but missing logs in tools/."
-        rag_query_results: ["Logging best practices in Python", "Using Rich console for logs"]
-      </input>
-      <output>
-        context: {
-          "latest_plan": "Add logging to core and nodes directories.",
-          "past_plans": ["Add logging to core directory", "Initial skeleton plan"],
-          "user_clarifications": ["Include error handling logs", "Use standard logging format"],
-          "plan_feedback": "Plan is functional but missing logs in tools/.",
-          "relevant_docs": ["Logging best practices in Python", "Using Rich console for logs"]
-        }
-      </output>
-    </example>
-  </examples>
-</prompt>
+  <h>Guidelines</h>
+  <list>
+    <item>Keep only the last 3 plans in history.</item>
+    <item>Accumulate user clarifications across iterations.</item>
+    <item>Include user feedback and approval status explicitly.</item>
+    <item>Include the latest context_difference.</item>
+    <item>Limit RAG results to the top 5 most relevant.</item>
+    <item>Keep the structure clean and consistent.</item>
+  </list>
+
+  <h>Inputs</h>
+  <list>
+    <item>Current Plan: {{current_plan}}</item>
+    <item>Plan History: {{plan_history}}</item>
+    <item>User Clarifications: {{user_responses}}</item>
+    <item>User Feedback: {{user_feedback}}</item>
+    <item>User Approval: {{user_approved}}</item>
+    <item>Plan Feedback: {{plan_feedback}}</item>
+    <item>Context Difference: {{context_difference}}</item>
+    <item>RAG Results: {{rag_query_results}}</item>
+  </list>
+
+  <h>Examples</h>
+
+  <example>
+    <input>
+Current Plan: "Add logging to API layer"
+Plan History: ["Initial plan", "Refined plan"]
+User Clarifications: ["Include error logs"]
+User Feedback: ""
+User Approval: false
+Plan Feedback: "Missing logging in services"
+Context Difference: "User clarifications added"
+RAG Results: ["Python logging best practices"]
+    </input>
+
+    <output>
+{
+  "latest_plan": "Add logging to API layer",
+  "past_plans": ["Refined plan", "Initial plan"],
+  "user_clarifications": ["Include error logs"],
+  "user_feedback": "",
+  "user_approved": false,
+  "plan_feedback": "Missing logging in services",
+  "context_difference": "User clarifications added",
+  "relevant_docs": ["Python logging best practices"]
+}
+    </output>
+  </example>
+
+  <output-format>
+    Return ONLY a valid JSON object.
+    Do NOT include explanations or extra text.
+  </output-format>
+</poml>
