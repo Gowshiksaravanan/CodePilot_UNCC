@@ -1,0 +1,11 @@
+{
+  "chunk_ids": [
+    "54de92f89b0e-0"
+  ],
+  "chunk_texts": [
+    "Python decorators allow you to modify the behavior of functions. A decorator is a function that takes another function and extends its behavior without modifying it. Example:\ndef my_decorator(func):\n def wrapper():\n print(\"Before function call\")\n func()\n print(\"After function call\")\n return wrapper"
+  ],
+  "chunk_sources": [
+    "data/docs/sample.txt"
+  ]
+}
