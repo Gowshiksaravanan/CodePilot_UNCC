@@ -20,6 +20,9 @@ def run(state: AgentState) -> dict:
     user_query = state.get("user_query", "")
     code_base = state.get("code_base", {})
     existing_context = state.get("context")
+    files_modified = state.get("files_modified", [])
+    execution_log = state.get("execution_log", [])
+    has_prev_context = bool(existing_context) or bool(files_modified) or bool(execution_log)
 
     prompt = render_prompt("query_reconstruction", {
         "user_query": user_query,
@@ -33,6 +36,6 @@ def run(state: AgentState) -> dict:
 
     return {
         "restructured_query": reconstructed,
-        "has_prev_context": bool(existing_context),
+        "has_prev_context": has_prev_context,
         "current_node": "query_reconstruction"
     }
