@@ -10,21 +10,38 @@ import re
 
 from langchain_core.messages import HumanMessage
 from providers.provider import get_llm
-from prompts.prompt_renderer import render_prompt
 
 logger = logging.getLogger(__name__)
 
 
-def generate_suggestions(questions: list, config: dict = None) -> list:
+def generate_suggestions(questions: list, config: dict = None, route_type: str = None) -> list:
     """Generate suggestion options for each clarification question. Returns list of list of strings."""
-    llm = get_llm(config)
+    llm = get_llm(config, route_type=route_type)
 
-    # Render the POML prompt with context
-    prompt_content = render_prompt("suggestion_generator", {
-        "questions": json.dumps(questions),
-    })
+    questions_str = json.dumps(questions)
 
-    response = llm.invoke([HumanMessage(content=prompt_content)])
+    # Use inline prompt to avoid POML XML parse errors from dynamic content
+    prompt_content = (
+        "You are a coding assistant that generates multiple-choice suggestions\n"
+        "for clarification questions about software development tasks.\n\n"
+        "For each question below, generate 2-4 concrete suggestion options that\n"
+        "the user can choose from. Options should cover the most common/reasonable choices.\n\n"
+        f"QUESTIONS:\n{questions_str}\n\n"
+        "Return ONLY a valid JSON array of arrays. Each inner array contains suggestion strings\n"
+        "for the corresponding question. No additional text.\n"
+        'Example: [["Option A", "Option B"], ["Option X", "Option Y", "Option Z"]]\n'
+    )
+
+    try:
+        response = llm.invoke([HumanMessage(content=prompt_content)])
+    except Exception as llm_err:
+        err_str = str(llm_err)
+        if "rate_limit" in err_str.lower() or "429" in err_str:
+            logger.warning("Cloud API rate limited in suggestion_generator, falling back to Ollama")
+            llm = get_llm(config, route_type="simple")
+            response = llm.invoke([HumanMessage(content=prompt_content)])
+        else:
+            raise
 
     return _parse_suggestions(response.content, len(questions))
 

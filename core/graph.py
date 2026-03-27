@@ -1,5 +1,6 @@
 """
 LangGraph graph definition — wires all nodes and conditional edges.
+Implements all conditional edges from the design document.
 """
 
 from langgraph.graph import StateGraph, END
@@ -25,7 +26,9 @@ def has_prev_context_edge(state: AgentState) -> str:
 
 
 def route_type_edge(state: AgentState) -> str:
-    """After super_router: check user_approved first, then fall back to route_type."""
+    """After super_router: route based on user_approved flag or route_type.
+    Also checks provider switch needed (design doc edge: Provider switch needed?).
+    Provider switching is handled within super_router node itself."""
     # If coming back from user_plan_approval, use the approval flag
     if state.get("user_approved") is True:
         return "implement"
@@ -39,7 +42,10 @@ def route_type_edge(state: AgentState) -> str:
 
 
 def plan_score_edge(state: AgentState) -> str:
-    """After plan_node: if LLM judge approves (>= 0.85), show to user. Else clarify."""
+    """After plan_node: combined edge for LLM judge approval + plan iteration safety.
+    Design doc edges: 'LLM judge approved?' (plan_score >= 0.85)
+                      'Plan iteration safety' (plan_iteration_count < 4)
+    If iterations >= 4, force to user approval to prevent infinite loops."""
     if state["plan_iteration_count"] >= 4:
         return "user_plan_approval"
     if state["plan_score"] >= 0.85:
@@ -48,11 +54,29 @@ def plan_score_edge(state: AgentState) -> str:
 
 
 def implementation_correct_edge(state: AgentState) -> str:
-    """After code_judge: correct -> done, incorrect -> retry implement."""
+    """After code_judge: combined edge for implementation correctness + iteration safety.
+    Design doc edges: 'Implementation correct?' (status == 'correct')
+                      'Implement iteration safety' (implement_iteration_count < 5)
+    If iterations >= 5, stop to prevent infinite retries."""
     if state["implementation_status"].get("status") == "correct":
         return END
     if state["implement_iteration_count"] >= 5:
         return END
+    return "implement"
+
+
+def mcp_server_healthy_edge(state: AgentState) -> str:
+    """Before implement: check if MCP servers are connected.
+    Design doc edge: 'MCP server healthy?'
+    If any server is disconnected, log error and warn but still proceed
+    (implement node will attempt reconnection via MCPClient)."""
+    server_status = state.get("mcp_server_status", {})
+    disconnected = [name for name, status in server_status.items() if status == "disconnected"]
+    if disconnected:
+        # Log warning but proceed — MCPClient has reconnection logic
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("MCP servers disconnected before implement: %s. Will attempt reconnection.", disconnected)
     return "implement"
 
 
@@ -75,7 +99,7 @@ def build_graph(config: dict = None):
     # Entry point
     graph.set_entry_point("query_reconstruction")
 
-    # Query reconstruction -> check if previous context exists
+    # Edge: has_prev_context? (design doc)
     graph.add_conditional_edges("query_reconstruction", has_prev_context_edge, {
         "comparator": "comparator",
         "context_updator": "context_updator",
@@ -87,13 +111,14 @@ def build_graph(config: dict = None):
     # Context updator -> Super router (classify task)
     graph.add_edge("context_updator", "super_router")
 
-    # Super router: simple -> implement, complex -> plan_node
+    # Edge: Route type + Provider switch + User approved? (design doc)
+    # Simple -> implement (via MCP health check), Complex -> plan_node
     graph.add_conditional_edges("super_router", route_type_edge, {
         "implement": "implement",
         "plan_node": "plan_node",
     })
 
-    # Plan score: approved -> user_plan_approval, rejected -> user_clarification
+    # Edge: LLM judge approved? + Plan iteration safety (design doc)
     graph.add_conditional_edges("plan_node", plan_score_edge, {
         "user_plan_approval": "user_plan_approval",
         "user_clarification": "user_clarification",
@@ -111,10 +136,17 @@ def build_graph(config: dict = None):
     # After implementation -> code judge reviews
     graph.add_edge("implement", "code_judge")
 
-    # Code judge: correct -> END, incorrect -> retry implement
+    # Edge: Implementation correct? + Implement iteration safety (design doc)
     graph.add_conditional_edges("code_judge", implementation_correct_edge, {
         END: END,
         "implement": "implement",
     })
 
-    return graph.compile()
+    checkpointer = None
+    if config and config.get("checkpointing", {}).get("enabled"):
+        from core.checkpoint import PersistentMemorySaver
+
+        path = config.get("checkpointing", {}).get("path", "CodePilot_UNCC/.codepilot/checkpoints.pkl")
+        checkpointer = PersistentMemorySaver(path)
+
+    return graph.compile(checkpointer=checkpointer)

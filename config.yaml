@@ -1,19 +1,25 @@
 provider:
-  name: groq                    # ollama | groq | openai
-  model: llama-3.3-70b-versatile
-  api_key_env: GROQ_API_KEY     # env variable name holding the API key
+  name: openai                   # ollama | groq | openai
+  model: gpt-4o-mini
+  # Cloud provider priority: OPENAI_API_KEY > GROQ_API_KEY > Ollama
+  # If both keys exist, OpenAI is used for complex/implement/judge tasks
+  # Simple tasks always use Ollama (local, fast)
 
-execution_mode: confirm          # confirm | auto
+project_path: ../project         # target project directory (relative to CodePilot_UNCC/)
+
+execution_mode: auto             # confirm | auto
+
+checkpointing:
+  enabled: true
+  path: .codepilot/checkpoints.pkl    # resolved relative to agent root
 
 mcp_servers:
   filesystem:
     command: npx
-    args: ["@modelcontextprotocol/server-filesystem", "./workspace"]
+    args: ["@modelcontextprotocol/server-filesystem", "."]
   tavily:
     command: npx
     args: ["tavily-mcp"]
-    env:
-      TAVILY_API_KEY: ""
   rag:
-    command: python
+    command: ./venv/bin/python
     args: ["mcp_servers/rag_server/server.py"]

@@ -7,13 +7,13 @@ ChromaDB. A small BM25 artifact bundle is also written for the retrieval phase.
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import json
-import re
 import pickle
+import re
 import sys
-import numpy as np
+from pathlib import Path
 
+import numpy as np
 from chromadb import PersistentClient
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer

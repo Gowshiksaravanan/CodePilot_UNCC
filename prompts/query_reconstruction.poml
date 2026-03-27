@@ -6,19 +6,19 @@
   </role>
 
   <task>
-    Rewrite the user's request into a refined and unambiguous task description.
+    Rewrite the user’s request into a refined and unambiguous form.
 
     The reconstructed query should:
-    - Be specific and actionable
+    - Preserve the original intent exactly
     - Remove ambiguity and vagueness
-    - Preserve the original intent
     - Include relevant technical details when possible
-    - Be structured in a way that helps downstream planning
+    - Be concise but informative
   </task>
 
   <h>Guidelines</h>
   <list>
     <item>Do NOT change the meaning of the request.</item>
+    <item>If the user is asking a QUESTION (e.g., "what is X?", "explain X", "how does X work?"), keep it as a question. Do NOT turn it into a coding task or action item.</item>
     <item>If the query is vague, make reasonable assumptions but do not invent requirements.</item>
     <item>If the task involves code, mention relevant components such as files, functions, APIs, or modules when possible.</item>
     <item>If the task implies multiple steps, rewrite it as a clear high-level objective (NOT a full plan).</item>
@@ -67,6 +67,20 @@ Optimize the performance of the relevant component by identifying bottlenecks an
     <input>User Query: add jwt auth using express</input>
     <output>
 Integrate JWT-based authentication into the Express application, including token generation, validation, and middleware for protected routes.
+    </output>
+  </example>
+
+  <example>
+    <input>User Query: what is langraph</input>
+    <output>
+What is LangGraph?
+    </output>
+  </example>
+
+  <example>
+    <input>User Query: explain how async await works in python</input>
+    <output>
+How does async/await work in Python?
     </output>
   </example>
 

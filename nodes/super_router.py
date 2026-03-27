@@ -1,6 +1,9 @@
 """
 Super Router Node
 Classifies the task as "simple" or "complex" using LLM-based analysis.
+- simple: small coding task → implement directly via MCP tools
+- complex: multi-step coding task → plan → approve → implement
+
 On re-entry (after user approval/rejection), preserves the existing route_type
 and lets the conditional edge (route_type_edge) handle routing via user_approved flag.
 
@@ -14,25 +17,45 @@ import logging
 from core.state import AgentState
 from core.config import load_config
 from providers.provider import get_llm
-from prompts.prompt_renderer import render_prompt
 
 logger = logging.getLogger(__name__)
 
 
 def _classify_task(query: str, code_base: dict, config: dict) -> str:
-    """Use LLM to classify the task as 'simple' or 'complex'."""
+    """Classify the task as 'simple' or 'complex'.
+    Uses a direct, concise prompt that works well with smaller local models."""
     llm = get_llm(config)
 
-    prompt_content = render_prompt("super_router", {
-        "restructured_query": query,
-        "code_base": json.dumps(code_base, default=str) if code_base else "No codebase information available.",
-    })
+    # Count files in the codebase for context
+    file_count = len(code_base.get("file_tree", [])) if code_base else 0
+
+    # Use a very concise prompt that small models handle better
+    prompt = (
+        f'Classify this coding task as "simple" or "complex".\n\n'
+        f'Task: {query}\n'
+        f'Project has {file_count} files.\n\n'
+        f'Rules:\n'
+        f'- simple = pure logic, single script, no UI, no external APIs, no frameworks '
+        f'(e.g. "add two numbers", "sort a list", "fizzbuzz")\n'
+        f'- complex = uses frameworks (Flask, Streamlit, Django, FastAPI), builds an app, '
+        f'has UI, uses APIs, multiple components, or anything non-trivial\n\n'
+        f'Answer with one word only: simple or complex'
+    )
 
     from langchain_core.messages import HumanMessage
-    response = llm.invoke([HumanMessage(content=prompt_content)])
+    response = llm.invoke([HumanMessage(content=prompt)])
     raw = response.content.strip().lower()
+    logger.info("Super router raw LLM response: %s", raw[:200])
 
-    # Extract classification — LLM should return just "simple" or "complex"
+    # Check first word for classification
+    first_word = raw.split()[0].rstrip(".,;:!") if raw.split() else ""
+
+    if first_word == "simple":
+        return "simple"
+    if first_word == "complex":
+        return "complex"
+
+    # Fallback: check if classification word appears anywhere
     if "simple" in raw:
         return "simple"
     return "complex"
@@ -51,6 +74,7 @@ def run(state: AgentState) -> dict:
     """
     config = load_config()
     provider = config["provider"]
+    error_log = list(state.get("error_log", []) or [])
 
     query = state.get("restructured_query", "")
     code_base = state.get("code_base", {})
@@ -67,6 +91,7 @@ def run(state: AgentState) -> dict:
             "active_provider": provider["name"],
             "active_model": provider["model"],
             "current_node": "super_router",
+            "error_log": error_log,
         }
 
     # Re-entry from clarification: route_type already forced to "complex"
@@ -77,6 +102,7 @@ def run(state: AgentState) -> dict:
             "active_provider": provider["name"],
             "active_model": provider["model"],
             "current_node": "super_router",
+            "error_log": error_log,
         }
 
     # Fresh task — classify with LLM
@@ -88,4 +114,5 @@ def run(state: AgentState) -> dict:
         "active_provider": provider["name"],
         "active_model": provider["model"],
         "current_node": "super_router",
+        "error_log": error_log,
     }

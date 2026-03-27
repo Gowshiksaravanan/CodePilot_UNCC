@@ -27,3 +27,4 @@ def order_fusion_scores(scores: dict[str, float], top_k: int) -> list[tuple[str,
         scores.items(),
         key=lambda item: (-item[1], item[0]),
     )[:top_k]
+

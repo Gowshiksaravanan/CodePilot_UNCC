@@ -13,11 +13,10 @@
 
   <h>Classification Rules</h>
   <list>
-    <item>Simple tasks: bug fixes with clear cause, renaming/refactoring within a single file, adding a single function to an existing module, updating config values, fixing typos, adding comments or docstrings.</item>
+    <item>Simple tasks: bug fixes with clear cause, renaming/refactoring within a single file, adding a single function to an existing module, updating config values, fixing typos, adding comments or docstrings, writing a small standalone script or program.</item>
     <item>Complex tasks: adding new features (endpoints, pages, services), setting up authentication/authorization, database schema changes, integrating third-party APIs, creating new modules or packages, CI/CD pipeline changes, multi-file refactors.</item>
     <item>When in doubt, classify as "complex" — it is safer to plan than to skip planning.</item>
     <item>If the task description is vague or underspecified, classify as "complex" — planning will surface the ambiguities.</item>
-    <item>If the codebase is large (many files/dependencies), lean toward "complex" even for seemingly small changes — the blast radius may be bigger than it appears.</item>
   </list>
 
   <h>User Task</h>
@@ -30,6 +29,11 @@
 
   <example>
     <input>Task: Fix the typo in the error message in utils.py line 42</input>
+    <output>simple</output>
+  </example>
+
+  <example>
+    <input>Task: Write a Python program to add two numbers</input>
     <output>simple</output>
   </example>
 

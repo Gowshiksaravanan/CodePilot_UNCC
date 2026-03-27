@@ -18,6 +18,7 @@ console = Console()
 
 def run(state: AgentState) -> dict:
     """Display the plan to the user and collect approval or rejection with reason."""
+    error_log = list(state.get("error_log", []) or [])
     current_plan = state.get("current_plan", "")
     plan_score = state.get("plan_score", 0.0)
     plan_iteration_count = state.get("plan_iteration_count", 0)
@@ -49,6 +50,7 @@ def run(state: AgentState) -> dict:
                 "user_approved": True,
                 "user_feedback": "",
                 "current_node": "user_plan_approval",
+                "error_log": error_log,
             }
 
         if response in ("no", "n"):
@@ -69,6 +71,7 @@ def run(state: AgentState) -> dict:
                 "user_approved": False,
                 "user_feedback": reason,
                 "current_node": "user_plan_approval",
+                "error_log": error_log,
             }
 
         console.print("[dim]Please answer 'yes' or 'no'.[/dim]")

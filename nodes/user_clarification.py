@@ -29,16 +29,40 @@ console = Console()
 def run(state: AgentState) -> dict:
     """Generate clarification questions, display with suggestions, collect user responses."""
     config = load_config()
+    error_log = list(state.get("error_log", []) or [])
 
     current_plan = state.get("current_plan", "")
     plan_feedback = state.get("plan_feedback", "")
     plan_score = state.get("plan_score", 0.0)
+    route_type = state.get("route_type", "")
 
     # Generate clarification questions from judge feedback
-    questions = generate_clarifications(current_plan, plan_feedback, plan_score, config=config)
+    try:
+        questions = generate_clarifications(current_plan, plan_feedback, plan_score, config=config, route_type=route_type)
+    except Exception as exc:
+        logger.exception("Clarification generation failed")
+        from datetime import datetime, timezone
+        error_log.append({
+            "node": "user_clarification",
+            "tool": "generate_clarifications",
+            "error": str(exc),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        questions = [f"The plan reviewer scored this {plan_score:.2f}. What changes would you like?"]
 
     # Generate suggestions for each question
-    suggestions = generate_suggestions(questions, config=config)
+    try:
+        suggestions = generate_suggestions(questions, config=config, route_type=route_type)
+    except Exception as exc:
+        logger.exception("Suggestion generation failed")
+        from datetime import datetime, timezone
+        error_log.append({
+            "node": "user_clarification",
+            "tool": "generate_suggestions",
+            "error": str(exc),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        suggestions = [[] for _ in questions]
 
     # Display judge feedback to user
     console.print()
@@ -99,4 +123,5 @@ def run(state: AgentState) -> dict:
         "user_responses": user_responses,
         "route_type": "complex",
         "current_node": "user_clarification",
+        "error_log": error_log,
     }

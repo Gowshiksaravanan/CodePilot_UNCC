@@ -53,7 +53,6 @@ Plan Feedback: "Missing logging in services"
 Context Difference: "User clarifications added"
 RAG Results: ["Python logging best practices"]
     </input>
-
     <output>
 {
   "latest_plan": "Add logging to API layer",

@@ -6,9 +6,17 @@ query_python_docs(query: str)
 
 from __future__ import annotations
 
+import os
+import sys
+
 from mcp.server.fastmcp import FastMCP
 
-from .retriever import retrieve
+# Allow running as a script: ensure CodePilot_UNCC/ is on sys.path
+_PKG_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _PKG_ROOT not in sys.path:
+    sys.path.insert(0, _PKG_ROOT)
+
+from mcp_servers.rag_server.retriever import retrieve
 
 
 mcp = FastMCP("python-docs-rag")
